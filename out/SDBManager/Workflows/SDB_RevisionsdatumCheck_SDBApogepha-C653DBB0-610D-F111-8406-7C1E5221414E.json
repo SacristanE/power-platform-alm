@@ -1,0 +1,412 @@
+{
+  "properties": {
+    "connectionReferences": {
+      "shared_sharepointonline": {
+        "runtimeSource": "embedded",
+        "connection": {
+          "connectionReferenceLogicalName": "cra40_sharedsharepointonline_33860"
+        },
+        "api": {
+          "name": "shared_sharepointonline"
+        }
+      },
+      "shared_office365": {
+        "runtimeSource": "embedded",
+        "connection": {
+          "connectionReferenceLogicalName": "cra40_sharedoffice365_d4fde"
+        },
+        "api": {
+          "name": "shared_office365"
+        }
+      }
+    },
+    "definition": {
+      "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+      "contentVersion": "undefined",
+      "parameters": {
+        "$authentication": {
+          "defaultValue": {},
+          "type": "SecureObject"
+        },
+        "$connections": {
+          "defaultValue": {},
+          "type": "Object"
+        }
+      },
+      "triggers": {
+        "Recurrence": {
+          "recurrence": {
+            "frequency": "Month",
+            "interval": 1,
+            "startTime": "2025-09-29T12:30:00",
+            "timeZone": "W. Europe Standard Time"
+          },
+          "evaluatedRecurrence": {
+            "frequency": "Month",
+            "interval": 1,
+            "startTime": "2025-09-29T12:30:00",
+            "timeZone": "W. Europe Standard Time"
+          },
+          "metadata": {
+            "operationMetadataId": "59ddd0ef-79f8-4ca4-a566-552e6b21f01d"
+          },
+          "type": "Recurrence"
+        }
+      },
+      "actions": {
+        "Initialize_variable": {
+          "runAfter": {},
+          "metadata": {
+            "operationMetadataId": "3835b2e8-17a5-4563-a186-7f18196b6a14"
+          },
+          "type": "InitializeVariable",
+          "inputs": {
+            "variables": [
+              {
+                "name": "materials",
+                "type": "array"
+              }
+            ]
+          }
+        },
+        "Get_items": {
+          "runAfter": {
+            "Initialize_variable": [
+              "Succeeded"
+            ]
+          },
+          "metadata": {
+            "operationMetadataId": "e120c285-74f7-4774-9194-985c624fd754"
+          },
+          "type": "OpenApiConnection",
+          "inputs": {
+            "parameters": {
+              "dataset": "https://unitaxgroup.sharepoint.com/sites/DemoSDB",
+              "table": "fe56cbc0-9237-4409-af65-e57cff873cc3",
+              "$top": 1000
+            },
+            "host": {
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+              "connectionName": "shared_sharepointonline",
+              "operationId": "GetItems"
+            },
+            "authentication": "@parameters('$authentication')"
+          }
+        },
+        "Apply_to_each": {
+          "foreach": "@outputs('Get_items')?['body/value']",
+          "actions": {
+            "Condition": {
+              "actions": {},
+              "runAfter": {
+                "empty_bestatigs": [
+                  "Succeeded"
+                ]
+              },
+              "else": {
+                "actions": {
+                  "Condition_4": {
+                    "actions": {
+                      "Condition_2": {
+                        "actions": {
+                          "Append_to_array_variable_1": {
+                            "metadata": {
+                              "operationMetadataId": "2912feff-1163-4be8-9e06-ede18099fc1e"
+                            },
+                            "type": "AppendToArrayVariable",
+                            "inputs": {
+                              "name": "materials",
+                              "value": "@{items('Apply_to_each')?['field_1']}: @{items('Apply_to_each')?['field_2']} | Revisionsdatum: @{items('Apply_to_each')?['Revisionsdatum']}"
+                            }
+                          },
+                          "Update_item_1": {
+                            "runAfter": {
+                              "Append_to_array_variable_1": [
+                                "Succeeded"
+                              ]
+                            },
+                            "metadata": {
+                              "operationMetadataId": "4ccc8b5f-90a0-4418-a5d2-c608dd9c167c"
+                            },
+                            "type": "OpenApiConnection",
+                            "inputs": {
+                              "parameters": {
+                                "dataset": "https://unitaxgroup.sharepoint.com/sites/DemoSDB",
+                                "table": "fe56cbc0-9237-4409-af65-e57cff873cc3",
+                                "id": "@items('Apply_to_each')?['ID']",
+                                "item/Aktualit_x00e4_tbest_x00e4_tigt": false
+                              },
+                              "host": {
+                                "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+                                "connectionName": "shared_sharepointonline",
+                                "operationId": "PatchItem"
+                              },
+                              "authentication": "@parameters('$authentication')"
+                            }
+                          }
+                        },
+                        "else": {
+                          "actions": {
+                            "Condition_3": {
+                              "actions": {
+                                "Append_to_array_variable": {
+                                  "metadata": {
+                                    "operationMetadataId": "c3ad5dbb-9aff-443e-8535-74c00a52acaa"
+                                  },
+                                  "type": "AppendToArrayVariable",
+                                  "inputs": {
+                                    "name": "materials",
+                                    "value": "@{items('Apply_to_each')?['field_1']}: @{items('Apply_to_each')?['field_2']} | Revisionsdatum: @{items('Apply_to_each')?['Revisionsdatum']}"
+                                  }
+                                },
+                                "Update_item": {
+                                  "runAfter": {
+                                    "Append_to_array_variable": [
+                                      "Succeeded"
+                                    ]
+                                  },
+                                  "metadata": {
+                                    "operationMetadataId": "932d4f19-920c-4e07-9406-0cc1f775e624"
+                                  },
+                                  "type": "OpenApiConnection",
+                                  "inputs": {
+                                    "parameters": {
+                                      "dataset": "https://unitaxgroup.sharepoint.com/sites/DemoSDB",
+                                      "table": "fe56cbc0-9237-4409-af65-e57cff873cc3",
+                                      "id": "@items('Apply_to_each')?['ID']",
+                                      "item/Aktualit_x00e4_tbest_x00e4_tigt": false
+                                    },
+                                    "host": {
+                                      "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+                                      "connectionName": "shared_sharepointonline",
+                                      "operationId": "PatchItem"
+                                    },
+                                    "authentication": "@parameters('$authentication')"
+                                  }
+                                }
+                              },
+                              "else": {
+                                "actions": {}
+                              },
+                              "expression": {
+                                "and": [
+                                  {
+                                    "less": [
+                                      "@ticks(items('Apply_to_each')?['Best_x00e4_tigtam'])",
+                                      "@ticks(addDays(utcNow(), -365))"
+                                    ]
+                                  }
+                                ]
+                              },
+                              "metadata": {
+                                "operationMetadataId": "3d86fcde-2a78-44ac-b4eb-0a4f55b9c5a4"
+                              },
+                              "type": "If"
+                            }
+                          }
+                        },
+                        "expression": {
+                          "and": [
+                            {
+                              "equals": [
+                                "@string(empty(items('Apply_to_each')?['Best_x00e4_tigtam']))",
+                                "@string(True)"
+                              ]
+                            }
+                          ]
+                        },
+                        "metadata": {
+                          "operationMetadataId": "048d1cf9-1cce-404f-bbba-09b06a7c150c"
+                        },
+                        "type": "If"
+                      }
+                    },
+                    "else": {
+                      "actions": {}
+                    },
+                    "expression": {
+                      "and": [
+                        {
+                          "less": [
+                            "@ticks(items('Apply_to_each')?['Revisionsdatum'])",
+                            "@ticks(addDays(utcNow(), -730))"
+                          ]
+                        }
+                      ]
+                    },
+                    "metadata": {
+                      "operationMetadataId": "e44b25b4-9cd3-41c9-957d-add543664ba0"
+                    },
+                    "type": "If"
+                  }
+                }
+              },
+              "expression": {
+                "and": [
+                  {
+                    "equals": [
+                      "@string(empty(items('Apply_to_each')?['Revisionsdatum']))",
+                      "@string(True)"
+                    ]
+                  }
+                ]
+              },
+              "metadata": {
+                "operationMetadataId": "a02baff0-c9b5-4c35-871a-519a83097afb"
+              },
+              "type": "If"
+            },
+            "Compose_3": {
+              "metadata": {
+                "operationMetadataId": "26e1bcf6-4ee8-4c20-a44b-35f8c2965b11"
+              },
+              "type": "Compose",
+              "inputs": "@items('Apply_to_each')?['Revisiondatum']"
+            },
+            "Compose_4": {
+              "runAfter": {
+                "empty_Revisionsdatum": [
+                  "Succeeded"
+                ]
+              },
+              "metadata": {
+                "operationMetadataId": "d069edd1-cf37-4687-9c80-e98f8cc425ce"
+              },
+              "type": "Compose",
+              "inputs": "@items('Apply_to_each')?['Best_x00e4_tigtam']"
+            },
+            "empty_Revisionsdatum": {
+              "runAfter": {
+                "Compose_3": [
+                  "Succeeded"
+                ]
+              },
+              "type": "Compose",
+              "inputs": "@string(empty(items('Apply_to_each')?['Revisiondatum']))"
+            },
+            "empty_bestatigs": {
+              "runAfter": {
+                "Compose_4": [
+                  "Succeeded"
+                ]
+              },
+              "type": "Compose",
+              "inputs": "@string(empty(items('Apply_to_each')?['Best_x00e4_tigtam']))"
+            }
+          },
+          "runAfter": {
+            "Get_items": [
+              "Succeeded"
+            ]
+          },
+          "metadata": {
+            "operationMetadataId": "518bff0e-b7e4-4a33-bf7b-7304921c3c03"
+          },
+          "type": "Foreach"
+        },
+        "Condition_1": {
+          "actions": {},
+          "runAfter": {
+            "Compose_2": [
+              "Succeeded"
+            ]
+          },
+          "else": {
+            "actions": {
+              "Get_Items_in_Bullet_Points_Format": {
+                "metadata": {
+                  "operationMetadataId": "344dd9b8-7380-4445-bcd9-4f23b989a7fd"
+                },
+                "type": "Compose",
+                "inputs": "@concat('- ', join(variables('materials'), '<br>- '))"
+              },
+              "Extract_Customer_Name_from_List": {
+                "runAfter": {
+                  "Get_Items_in_Bullet_Points_Format": [
+                    "Succeeded"
+                  ]
+                },
+                "metadata": {
+                  "operationMetadataId": "debc3813-f878-4eec-8660-a3304c5bf293"
+                },
+                "type": "Select",
+                "inputs": {
+                  "from": "@outputs('Get_items')?['body/value']",
+                  "select": {
+                    "Customer Name": "@item()?['Title']"
+                  }
+                }
+              },
+              "Get_the_first_vale_": {
+                "runAfter": {
+                  "Extract_Customer_Name_from_List": [
+                    "Succeeded"
+                  ]
+                },
+                "metadata": {
+                  "operationMetadataId": "15898370-c116-4dd4-8f70-381269fbc23c"
+                },
+                "type": "Compose",
+                "inputs": "@first(body('Extract_Customer_Name_from_List'))?['Customer Name']"
+              },
+              "Send_an_email_(V2)": {
+                "runAfter": {
+                  "Get_the_first_vale_": [
+                    "Succeeded"
+                  ]
+                },
+                "metadata": {
+                  "operationMetadataId": "857b9ecb-ea6b-42af-8ab7-87abfb907599"
+                },
+                "type": "OpenApiConnection",
+                "inputs": {
+                  "parameters": {
+                    "emailMessage/To": "sds@apogepha.de",
+                    "emailMessage/Subject": "Artikel überprüfen",
+                    "emailMessage/Body": "<p class=\"editor-paragraph\">Sehr geehrtes Personal von Apogepha,<br>bitte bestätigen Sie uns für folgende Artikel die Aktualität des/ der vorhandenen Sicherheitsdatenblätter, oder stellen Sie uns ein neueres zur Verfügung:<br><br>@{outputs('Get_Items_in_Bullet_Points_Format')}<br><br><br>Sollten Sie Fragen bezüglich dieser E-Mail haben, kontaktieren Sie bitte: phillip.kobs@unitax-group.de<br><br>Mit freundlichen Grüßen | Kind regards<br>Ihr Unitax Team<br><br>______________________________________________________________________________________________________________________________<br><br>Dear Apogepha Team,<br>for the following materials, please state that the safety data sheets are up to date or send us a new version:<br><br>@{outputs('Get_Items_in_Bullet_Points_Format')}<br><br><br>If you have any questions regarding this email, please contact: phillip.kobs@unitax-group.de<br><br>Mit freundlichen Grüßen | Kind regards<br>Ihr Unitax Team<br><br>********************************automated generated e-mail**********************************<br><br><br>An den Gehren 1 | 12529 Schönefeld | Germany<br>http://www.unitax-berlin.de<br>UNITAX-Pharmalogistik GmbH | Amtsgericht Cottbus HRB 11194 CB<br>Geschäftsführender Gesellschafter: André Michael Reich<br>Geschäftsführer: Grit Schmider, Bernd Schmider</p>",
+                    "emailMessage/From": "cc-unitax@unitax-group.de",
+                    "emailMessage/Importance": "Normal"
+                  },
+                  "host": {
+                    "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                    "connectionName": "shared_office365",
+                    "operationId": "SendEmailV2"
+                  },
+                  "authentication": "@parameters('$authentication')"
+                }
+              }
+            }
+          },
+          "expression": {
+            "and": [
+              {
+                "equals": [
+                  "@length(variables('materials'))",
+                  0
+                ]
+              }
+            ]
+          },
+          "metadata": {
+            "operationMetadataId": "4e58b82b-5654-41ba-be49-a947c5394a4f"
+          },
+          "type": "If"
+        },
+        "Compose_2": {
+          "runAfter": {
+            "Apply_to_each": [
+              "Succeeded"
+            ]
+          },
+          "metadata": {
+            "operationMetadataId": "d7e1f579-e01a-4950-8c3e-c5ff3b823449"
+          },
+          "type": "Compose",
+          "inputs": "@variables('materials')"
+        }
+      }
+    },
+    "templateName": null
+  },
+  "schemaVersion": "1.0.0.0"
+}

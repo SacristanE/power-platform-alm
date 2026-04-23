@@ -1,0 +1,534 @@
+{
+  "properties": {
+    "connectionReferences": {
+      "shared_sharepointonline": {
+        "api": {
+          "name": "shared_sharepointonline"
+        },
+        "connection": {
+          "connectionReferenceLogicalName": "cra40_sharedsharepointonline_33860"
+        },
+        "runtimeSource": "embedded"
+      },
+      "shared_commondataserviceforapps": {
+        "api": {
+          "name": "shared_commondataserviceforapps"
+        },
+        "connection": {
+          "connectionReferenceLogicalName": "cra40_sharedcommondataserviceforapps_3afe4"
+        },
+        "runtimeSource": "embedded"
+      },
+      "shared_translatorv2": {
+        "api": {
+          "name": "shared_translatorv2"
+        },
+        "connection": {
+          "connectionReferenceLogicalName": "cra40_sharedtranslatorv2_27aca"
+        },
+        "runtimeSource": "embedded"
+      },
+      "shared_office365-2": {
+        "api": {
+          "name": "shared_office365"
+        },
+        "connection": {
+          "connectionReferenceLogicalName": "cra40_sharedoffice365_54c95"
+        },
+        "runtimeSource": "embedded"
+      }
+    },
+    "definition": {
+      "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+      "contentVersion": "1.0.0.0",
+      "parameters": {
+        "$authentication": {
+          "defaultValue": {},
+          "type": "SecureObject"
+        },
+        "$connections": {
+          "defaultValue": {},
+          "type": "Object"
+        }
+      },
+      "triggers": {
+        "When_an_item_is_created_or_modified": {
+          "type": "OpenApiConnection",
+          "inputs": {
+            "parameters": {
+              "dataset": "https://unitaxgroup.sharepoint.com/sites/DemoSDB",
+              "table": "b6965665-86db-4bfc-98d7-f4416f51b668"
+            },
+            "host": {
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+              "operationId": "GetOnUpdatedItems",
+              "connectionName": "shared_sharepointonline"
+            }
+          },
+          "recurrence": {
+            "frequency": "Minute",
+            "interval": 1
+          },
+          "conditions": [
+            {
+              "expression": "@equals(triggerBody()?['{HasAttachments}'], true)"
+            }
+          ],
+          "splitOn": "@triggerOutputs()?['body/value']",
+          "metadata": {
+            "operationMetadataId": "46ef37b1-fd14-497d-9a6d-6a8b2092ac7c"
+          }
+        }
+      },
+      "actions": {
+        "Initialize_variable": {
+          "type": "InitializeVariable",
+          "inputs": {
+            "variables": [
+              {
+                "name": "BreakLoop",
+                "type": "boolean",
+                "value": false
+              }
+            ]
+          },
+          "runAfter": {
+            "Get_attachment": [
+              "Succeeded"
+            ]
+          },
+          "metadata": {
+            "operationMetadataId": "87f90fd2-8faa-4f4e-a374-6475234f6406"
+          }
+        },
+        "Get_attachment": {
+          "type": "OpenApiConnection",
+          "inputs": {
+            "parameters": {
+              "dataset": "https://unitaxgroup.sharepoint.com/sites/DemoSDB",
+              "table": "b6965665-86db-4bfc-98d7-f4416f51b668",
+              "itemId": "@triggerBody()?['ID']"
+            },
+            "host": {
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+              "operationId": "GetItemAttachments",
+              "connectionName": "shared_sharepointonline"
+            }
+          },
+          "runAfter": {},
+          "metadata": {
+            "operationMetadataId": "bae354b5-0fb6-4bd4-a1b6-e4103d5eed6d"
+          }
+        },
+        "For_each": {
+          "type": "Foreach",
+          "foreach": "@body('Get_attachment')",
+          "actions": {
+            "Get_attachment_content": {
+              "type": "OpenApiConnection",
+              "inputs": {
+                "parameters": {
+                  "dataset": "https://unitaxgroup.sharepoint.com/sites/DemoSDB",
+                  "table": "b6965665-86db-4bfc-98d7-f4416f51b668",
+                  "itemId": "@triggerBody()?['ID']",
+                  "attachmentId": "@items('For_each')?['Id']"
+                },
+                "host": {
+                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+                  "operationId": "GetAttachmentContent",
+                  "connectionName": "shared_sharepointonline"
+                }
+              },
+              "runAfter": {
+                "Set_Var_Breakloop": [
+                  "Succeeded"
+                ]
+              },
+              "metadata": {
+                "operationMetadataId": "5bf81af4-128a-421d-84dd-cdee539d1720"
+              }
+            },
+            "Set_Var_Breakloop": {
+              "type": "SetVariable",
+              "inputs": {
+                "name": "BreakLoop",
+                "value": false
+              },
+              "metadata": {
+                "operationMetadataId": "c4270037-17f3-4593-abba-c83f56b072d3"
+              }
+            },
+            "Condition_2": {
+              "type": "If",
+              "expression": {
+                "and": [
+                  {
+                    "or": [
+                      {
+                        "contains": [
+                          "@items('For_each')?['DisplayName']",
+                          ".pdf"
+                        ]
+                      },
+                      {
+                        "contains": [
+                          "@items('For_each')?['DisplayName']",
+                          ".PDF"
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "not": {
+                      "equals": [
+                        "@items('For_each')?['Id']",
+                        "@triggerBody()?['LastAttachmentID']"
+                      ]
+                    }
+                  }
+                ]
+              },
+              "actions": {
+                "Recognize_text_in_an_image_or_a_PDF_document": {
+                  "type": "OpenApiConnection",
+                  "inputs": {
+                    "parameters": {
+                      "item/requestv2/base64Encoded": "@body('Get_attachment_content')",
+                      "recordId": "86419a67-205a-454f-b6fc-601394f2786d",
+                      "item/source": {
+                        "consumptionSource": "PowerAutomate",
+                        "partnerSource": "AIBuilder",
+                        "consumptionSourceVersion": "Flow",
+                        "partnerSourceVersion": "920cafa4-0b32-4fca-b161-17ef3997d68e",
+                        "displayName": "SDB_PDFReg_AutoLangRecognition(V5)_ Ceva"
+                      }
+                    },
+                    "host": {
+                      "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps",
+                      "operationId": "aibuilderpredict_textrecognition",
+                      "connectionName": "shared_commondataserviceforapps"
+                    }
+                  },
+                  "metadata": {
+                    "flowSystemMetadata": {
+                      "portalOperationId": "aibuilderpredict_textrecognition",
+                      "portalOperationGroup": "aibuilder",
+                      "portalOperationApiDisplayNameOverride": "AI Builder",
+                      "portalOperationIconOverride": "https://content.powerapps.com/resource/makerx/static/pauto/images/designeroperations/aiBuilderNew.51dbdb6b.png",
+                      "portalOperationBrandColorOverride": "#0A76C4",
+                      "portalOperationApiTierOverride": "Standard"
+                    },
+                    "operationMetadataId": "19c9322a-eec5-4c14-98dd-e8ac43f75708"
+                  }
+                },
+                "Detect_language": {
+                  "type": "OpenApiConnection",
+                  "inputs": {
+                    "parameters": {
+                      "body/Text": "@outputs('Recognize_text_in_an_image_or_a_PDF_document')?['body/responsev2/predictionOutput/fullText']"
+                    },
+                    "host": {
+                      "apiId": "/providers/Microsoft.PowerApps/apis/shared_translatorv2",
+                      "operationId": "Detect",
+                      "connectionName": "shared_translatorv2"
+                    }
+                  },
+                  "runAfter": {
+                    "Recognize_text_in_an_image_or_a_PDF_document": [
+                      "Succeeded"
+                    ]
+                  },
+                  "metadata": {
+                    "operationMetadataId": "570ae499-2d71-4b43-98e9-48a5f1ee170a"
+                  }
+                },
+                "Condition_3": {
+                  "type": "If",
+                  "expression": {
+                    "and": [
+                      {
+                        "equals": [
+                          "@outputs('Detect_language')?['body/Code']",
+                          "de"
+                        ]
+                      }
+                    ]
+                  },
+                  "actions": {},
+                  "else": {
+                    "actions": {
+                      "E-Mail_senden_(V2)": {
+                        "type": "OpenApiConnection",
+                        "inputs": {
+                          "parameters": {
+                            "emailMessage/To": "@triggerBody()?['Editor']?['Email']",
+                            "emailMessage/Subject": "SDB erfüllt nicht die Kriterien / SDS does not meet critera.",
+                            "emailMessage/Body": "<p class=\"editor-paragraph\">SDB erfüllt nicht die Kriterien / SDS does not meet criteria<br><br>\nGuten Tag @{triggerBody()?['Editor']?['DisplayName']},<br>\nDas von Ihnen hochgeladene Sicherheitsdatenblatt für Artikel @{triggerBody()?['field_1']} entspricht leider nicht den notwendigen Anforderungen.</p>\n\n<p class=\"editor-paragraph\">Zur elektronischen Verarbeitung muss dieses folgende Kriterien zwingend erfüllen:<br>\n• Maschinenlesbar (keine Scans)<br>\n• In deutscher Sprache</p>\n\n<p class=\"editor-paragraph\">Falls Ihnen kein SDB in deutscher Sprache zur Verfügung steht, wenden Sie sich bitte an Ihren Lieferanten. Es ist verpflichtend, dass dieses in der jeweiligen Landessprache vorliegt.</p>\n\n<p class=\"editor-paragraph\">Vielen Dank.</p>\n\n<p class=\"editor-paragraph\">Ihr Unitax Customer Service Team</p>\n\n<p class=\"editor-paragraph\">_______________________________________________________________________________________________________________________</p>\n\n<p class=\"editor-paragraph\"><br>Dear @{triggerBody()?['Editor']?['DisplayName']},<br>\nUnfortunately, the SDS you have uploaded for material number @{triggerBody()?['field_1']} does not meet the necessary requirements.</p>\n\n<p class=\"editor-paragraph\">It must fulfill the following criteria for electronic processing:<br>\n• Machine-readable (no scans)<br>\n• In German language</p>\n\n<p class=\"editor-paragraph\">If you do not have an SDS in German, please contact your supplier. It is mandatory that SDS are available in the respective national language.</p>\n\n<p class=\"editor-paragraph\">Thank you.</p>\n\n<p class=\"editor-paragraph\">Your Unitax Customer Service Team</p>\n\n<p class=\"editor-paragraph\">********************************automated generated e-mail**********************************</p>\n\n<table>\n    <tbody><tr>\n        <td style=\"border-left: 2px solid orange; height: 100px; padding-right: 10px;\"></td>\n        <td style=\"line-height: 1.6;\">\n            UNITAX-Pharmalogistik GmbH<br>\n            An den Gehren 1 | 12529 Schönefeld | Germany<br>\n            http://www.unitax-berlin.de<br>\n            UNITAX-Pharmalogistik GmbH | Amtsgericht Cottbus HRB 11194 CB<br>\n            Geschäftsführender Gesellschafter: André Michael Reich<br>\n            Geschäftsführer: Grit Schmider, Bernd Schmider<br>\n        </td>\n    </tr>\n</tbody></table>\n\n",
+                            "emailMessage/From": "cc-unitax@unitax-group.de",
+                            "emailMessage/Importance": "Normal"
+                          },
+                          "host": {
+                            "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                            "operationId": "SendEmailV2",
+                            "connectionName": "shared_office365-2"
+                          }
+                        },
+                        "metadata": {
+                          "operationMetadataId": "64585424-ea90-4590-8ac8-37f25198681f"
+                        }
+                      }
+                    }
+                  },
+                  "runAfter": {
+                    "Detect_language": [
+                      "Succeeded"
+                    ]
+                  },
+                  "metadata": {
+                    "operationMetadataId": "7e811d1b-9a73-473a-9963-21f617f4ba16"
+                  }
+                },
+                "Filter_array": {
+                  "type": "Query",
+                  "inputs": {
+                    "from": "@outputs('Get_files_(properties_only)')?['body/value']",
+                    "where": "@endsWith(item()?['{Name}'],'.pdf')"
+                  },
+                  "runAfter": {
+                    "Get_files_(properties_only)": [
+                      "Succeeded"
+                    ]
+                  },
+                  "metadata": {
+                    "operationMetadataId": "8b95799d-edc1-4bb5-b7b4-a3a90f791553"
+                  }
+                },
+                "Get_files_(properties_only)": {
+                  "type": "OpenApiConnection",
+                  "inputs": {
+                    "parameters": {
+                      "dataset": "https://unitaxgroup.sharepoint.com/sites/DemoSDB",
+                      "table": "d9aff5e4-02be-4d79-988d-b3636a5be017",
+                      "$top": 100000
+                    },
+                    "host": {
+                      "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+                      "operationId": "GetFileItems",
+                      "connectionName": "shared_sharepointonline"
+                    }
+                  },
+                  "runAfter": {
+                    "Condition_3": [
+                      "Succeeded"
+                    ]
+                  },
+                  "metadata": {
+                    "operationMetadataId": "9d8b6172-f4aa-4851-82bd-82d47cbeafa1"
+                  }
+                },
+                "For_each_1": {
+                  "type": "Foreach",
+                  "foreach": "@outputs('Get_files_(properties_only)')?['body/value']",
+                  "actions": {
+                    "Condition_1": {
+                      "type": "If",
+                      "expression": {
+                        "and": [
+                          {
+                            "equals": [
+                              "@variables('BreakLoop')",
+                              true
+                            ]
+                          }
+                        ]
+                      },
+                      "actions": {},
+                      "else": {
+                        "actions": {
+                          "Condition": {
+                            "type": "If",
+                            "expression": {
+                              "and": [
+                                {
+                                  "contains": [
+                                    "@items('For_each_1')?['{Name}']",
+                                    "@string(triggerBody()?['field_1'])"
+                                  ]
+                                }
+                              ]
+                            },
+                            "actions": {
+                              "Delay": {
+                                "type": "Wait",
+                                "inputs": {
+                                  "interval": {
+                                    "count": 10,
+                                    "unit": "Second"
+                                  }
+                                },
+                                "runAfter": {
+                                  "Set_variable": [
+                                    "Succeeded"
+                                  ]
+                                },
+                                "metadata": {
+                                  "operationMetadataId": "ee93c779-91b0-42b5-b13e-3325f9a90346"
+                                }
+                              },
+                              "Set_variable": {
+                                "type": "SetVariable",
+                                "inputs": {
+                                  "name": "BreakLoop",
+                                  "value": true
+                                },
+                                "runAfter": {
+                                  "Delete_file": [
+                                    "Succeeded"
+                                  ]
+                                },
+                                "metadata": {
+                                  "operationMetadataId": "fdc6bfcf-d39b-430e-ba12-f37f72a87f86"
+                                }
+                              },
+                              "Delete_file": {
+                                "type": "OpenApiConnection",
+                                "inputs": {
+                                  "parameters": {
+                                    "dataset": "https://unitaxgroup.sharepoint.com/sites/DemoSDB",
+                                    "id": "@items('For_each_1')?['{Identifier}']"
+                                  },
+                                  "host": {
+                                    "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+                                    "operationId": "DeleteFile",
+                                    "connectionName": "shared_sharepointonline"
+                                  }
+                                },
+                                "metadata": {
+                                  "operationMetadataId": "10977a3f-041d-47ce-bc24-131fce65ed27"
+                                }
+                              }
+                            },
+                            "else": {
+                              "actions": {}
+                            },
+                            "runAfter": {
+                              "Compose": [
+                                "Succeeded"
+                              ]
+                            },
+                            "metadata": {
+                              "operationMetadataId": "ec2a64a2-5346-4812-ae60-a919641a0e6c"
+                            }
+                          },
+                          "Current_item_name": {
+                            "type": "Compose",
+                            "inputs": "@items('For_each_1')?['{Name}']",
+                            "metadata": {
+                              "operationMetadataId": "9af90373-8431-457d-b608-7b1c2f5dfa85"
+                            }
+                          },
+                          "Compose": {
+                            "type": "Compose",
+                            "inputs": "@string(triggerBody()?['field_1'])",
+                            "runAfter": {
+                              "Current_item_name": [
+                                "Succeeded"
+                              ]
+                            },
+                            "metadata": {
+                              "operationMetadataId": "160b4781-e977-4da4-8601-7198a1006f39"
+                            }
+                          }
+                        }
+                      },
+                      "metadata": {
+                        "operationMetadataId": "2ff825d9-db98-45ad-9fd5-89641ffece89"
+                      }
+                    }
+                  },
+                  "runAfter": {
+                    "Filter_array": [
+                      "Succeeded"
+                    ]
+                  }
+                },
+                "Create_file": {
+                  "type": "OpenApiConnection",
+                  "inputs": {
+                    "parameters": {
+                      "dataset": "https://unitaxgroup.sharepoint.com/sites/DemoSDB",
+                      "folderPath": "/Freigegebene Dokumente",
+                      "name": "@{triggerBody()?['field_1']}.pdf",
+                      "body": "@body('Get_attachment_content')"
+                    },
+                    "host": {
+                      "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+                      "operationId": "CreateFile",
+                      "connectionName": "shared_sharepointonline"
+                    }
+                  },
+                  "runAfter": {
+                    "For_each_1": [
+                      "Succeeded"
+                    ]
+                  },
+                  "runtimeConfiguration": {
+                    "contentTransfer": {
+                      "transferMode": "Chunked"
+                    }
+                  },
+                  "metadata": {
+                    "operationMetadataId": "f9afcf39-bdef-41f7-a542-510ec7e466cd"
+                  }
+                },
+                "Update_item": {
+                  "type": "OpenApiConnection",
+                  "inputs": {
+                    "parameters": {
+                      "dataset": "https://unitaxgroup.sharepoint.com/sites/DemoSDB",
+                      "table": "b6965665-86db-4bfc-98d7-f4416f51b668",
+                      "id": "@triggerBody()?['ID']",
+                      "item/LastAttachmentID": "@items('For_each')?['Id']"
+                    },
+                    "host": {
+                      "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+                      "operationId": "PatchItem",
+                      "connectionName": "shared_sharepointonline"
+                    }
+                  },
+                  "runAfter": {
+                    "Create_file": [
+                      "Succeeded"
+                    ]
+                  }
+                }
+              },
+              "else": {
+                "actions": {}
+              },
+              "runAfter": {
+                "Get_attachment_content": [
+                  "Succeeded"
+                ]
+              },
+              "metadata": {
+                "operationMetadataId": "e77b1e96-9261-4960-89e6-3f10cccda143"
+              }
+            }
+          },
+          "runAfter": {
+            "Initialize_variable": [
+              "Succeeded"
+            ]
+          },
+          "metadata": {
+            "operationMetadataId": "30b393ce-1abc-47bc-8929-fcdec4625b76"
+          }
+        }
+      },
+      "outputs": {}
+    },
+    "templateName": null
+  },
+  "schemaVersion": "1.0.0.0"
+}

@@ -1,0 +1,298 @@
+{
+  "properties": {
+    "connectionReferences": {
+      "shared_sharepointonline": {
+        "runtimeSource": "invoker",
+        "connection": {
+          "connectionReferenceLogicalName": "cra40_sharedsharepointonline_33860"
+        },
+        "api": {
+          "name": "shared_sharepointonline"
+        }
+      }
+    },
+    "definition": {
+      "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+      "contentVersion": "undefined",
+      "parameters": {
+        "$authentication": {
+          "defaultValue": {},
+          "type": "SecureObject"
+        },
+        "$connections": {
+          "defaultValue": {},
+          "type": "Object"
+        }
+      },
+      "triggers": {
+        "manual": {
+          "type": "Request",
+          "kind": "Button",
+          "inputs": {
+            "schema": {
+              "type": "object",
+              "properties": {},
+              "required": []
+            }
+          }
+        }
+      },
+      "actions": {
+        "Get_items": {
+          "runAfter": {},
+          "type": "OpenApiConnection",
+          "inputs": {
+            "parameters": {
+              "dataset": "https://unitaxgroup.sharepoint.com/sites/DemoSDB",
+              "table": "1beb6028-9cab-4685-9f73-2c96c77ac0fe",
+              "$top": 100000
+            },
+            "host": {
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+              "connectionName": "shared_sharepointonline",
+              "operationId": "GetItems"
+            },
+            "authentication": {
+              "value": "@json(decodeBase64(triggerOutputs().headers['X-MS-APIM-Tokens']))['$ConnectionKey']",
+              "type": "Raw"
+            }
+          }
+        },
+        "Apply_to_each": {
+          "foreach": "@outputs('Get_items')?['body/value']",
+          "actions": {
+            "Condition_2": {
+              "actions": {
+                "Get_attachments": {
+                  "type": "OpenApiConnection",
+                  "inputs": {
+                    "parameters": {
+                      "dataset": "https://unitaxgroup.sharepoint.com/sites/DemoSDB",
+                      "table": "1beb6028-9cab-4685-9f73-2c96c77ac0fe",
+                      "itemId": "@items('Apply_to_each')?['ID']"
+                    },
+                    "host": {
+                      "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+                      "connectionName": "shared_sharepointonline",
+                      "operationId": "GetItemAttachments"
+                    },
+                    "authentication": {
+                      "value": "@json(decodeBase64(triggerOutputs().headers['X-MS-APIM-Tokens']))['$ConnectionKey']",
+                      "type": "Raw"
+                    }
+                  }
+                },
+                "Apply_to_each_1": {
+                  "foreach": "@body('Get_attachments')",
+                  "actions": {
+                    "Condition_1": {
+                      "actions": {
+                        "List_folder": {
+                          "runAfter": {
+                            "Get_attachment_content": [
+                              "Succeeded"
+                            ]
+                          },
+                          "metadata": {
+                            "%252fFreigegebene%2bDokumente": "/Freigegebene Dokumente"
+                          },
+                          "type": "OpenApiConnection",
+                          "inputs": {
+                            "parameters": {
+                              "dataset": "https://unitaxgroup.sharepoint.com/sites/DemoSDB",
+                              "id": "%252fFreigegebene%2bDokumente"
+                            },
+                            "host": {
+                              "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+                              "connectionName": "shared_sharepointonline",
+                              "operationId": "ListFolder"
+                            },
+                            "authentication": {
+                              "value": "@json(decodeBase64(triggerOutputs().headers['X-MS-APIM-Tokens']))['$ConnectionKey']",
+                              "type": "Raw"
+                            }
+                          }
+                        },
+                        "Filter_array-copy": {
+                          "runAfter": {
+                            "List_folder": [
+                              "Succeeded"
+                            ]
+                          },
+                          "type": "Query",
+                          "inputs": {
+                            "from": "@body('List_folder')",
+                            "where": "@endsWith(item()?['Name'],'.pdf')"
+                          }
+                        },
+                        "For_each": {
+                          "foreach": "@outputs('Filter_array-copy')['body']",
+                          "actions": {
+                            "Condition": {
+                              "actions": {
+                                "Delete_file": {
+                                  "type": "OpenApiConnection",
+                                  "inputs": {
+                                    "parameters": {
+                                      "dataset": "https://unitaxgroup.sharepoint.com/sites/DemoSDB",
+                                      "id": "@items('For_each')?['Id']"
+                                    },
+                                    "host": {
+                                      "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+                                      "connectionName": "shared_sharepointonline",
+                                      "operationId": "DeleteFile"
+                                    },
+                                    "authentication": {
+                                      "value": "@json(decodeBase64(triggerOutputs().headers['X-MS-APIM-Tokens']))['$ConnectionKey']",
+                                      "type": "Raw"
+                                    }
+                                  }
+                                },
+                                "Delay": {
+                                  "runAfter": {
+                                    "Delete_file": [
+                                      "Succeeded"
+                                    ]
+                                  },
+                                  "type": "Wait",
+                                  "inputs": {
+                                    "interval": {
+                                      "count": 10,
+                                      "unit": "Second"
+                                    }
+                                  }
+                                }
+                              },
+                              "else": {
+                                "actions": {}
+                              },
+                              "expression": {
+                                "and": [
+                                  {
+                                    "contains": [
+                                      "@items('For_each')?['DisplayName']",
+                                      "@string(items('Apply_to_each')?['field_1'])"
+                                    ]
+                                  }
+                                ]
+                              },
+                              "type": "If"
+                            }
+                          },
+                          "runAfter": {
+                            "Filter_array-copy": [
+                              "Succeeded"
+                            ]
+                          },
+                          "type": "Foreach"
+                        },
+                        "Get_attachment_content": {
+                          "type": "OpenApiConnection",
+                          "inputs": {
+                            "parameters": {
+                              "dataset": "https://unitaxgroup.sharepoint.com/sites/DemoSDB",
+                              "table": "1beb6028-9cab-4685-9f73-2c96c77ac0fe",
+                              "itemId": "@items('Apply_to_each')?['ID']",
+                              "attachmentId": "@items('Apply_to_each_1')?['Id']"
+                            },
+                            "host": {
+                              "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+                              "connectionName": "shared_sharepointonline",
+                              "operationId": "GetAttachmentContent"
+                            },
+                            "authentication": {
+                              "value": "@json(decodeBase64(triggerOutputs().headers['X-MS-APIM-Tokens']))['$ConnectionKey']",
+                              "type": "Raw"
+                            }
+                          }
+                        },
+                        "Create_file": {
+                          "runAfter": {
+                            "For_each": [
+                              "Succeeded"
+                            ]
+                          },
+                          "type": "OpenApiConnection",
+                          "inputs": {
+                            "parameters": {
+                              "dataset": "https://unitaxgroup.sharepoint.com/sites/DemoSDB",
+                              "folderPath": "/Freigegebene Dokumente",
+                              "name": "@{items('Apply_to_each')?['field_1']}.pdf",
+                              "body": "@body('Get_attachment_content')"
+                            },
+                            "host": {
+                              "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+                              "connectionName": "shared_sharepointonline",
+                              "operationId": "CreateFile"
+                            },
+                            "authentication": {
+                              "value": "@json(decodeBase64(triggerOutputs().headers['X-MS-APIM-Tokens']))['$ConnectionKey']",
+                              "type": "Raw"
+                            }
+                          },
+                          "runtimeConfiguration": {
+                            "contentTransfer": {
+                              "transferMode": "Chunked"
+                            }
+                          }
+                        }
+                      },
+                      "else": {
+                        "actions": {}
+                      },
+                      "expression": {
+                        "or": [
+                          {
+                            "contains": [
+                              "@items('Apply_to_each_1')?['DisplayName']",
+                              ".pdf"
+                            ]
+                          },
+                          {
+                            "contains": [
+                              "@items('Apply_to_each_1')?['DisplayName']",
+                              ".PDF"
+                            ]
+                          }
+                        ]
+                      },
+                      "type": "If"
+                    }
+                  },
+                  "runAfter": {
+                    "Get_attachments": [
+                      "Succeeded"
+                    ]
+                  },
+                  "type": "Foreach"
+                }
+              },
+              "else": {
+                "actions": {}
+              },
+              "expression": {
+                "and": [
+                  {
+                    "equals": [
+                      "@items('Apply_to_each')?['{HasAttachments}']",
+                      true
+                    ]
+                  }
+                ]
+              },
+              "type": "If"
+            }
+          },
+          "runAfter": {
+            "Get_items": [
+              "Succeeded"
+            ]
+          },
+          "type": "Foreach"
+        }
+      }
+    },
+    "templateName": null
+  },
+  "schemaVersion": "1.0.0.0"
+}

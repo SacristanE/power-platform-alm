@@ -1,0 +1,121 @@
+{
+  "properties": {
+    "connectionReferences": {
+      "shared_sharepointonline": {
+        "runtimeSource": "embedded",
+        "connection": {
+          "connectionReferenceLogicalName": "cra40_sharedsharepointonline_33860"
+        },
+        "api": {
+          "name": "shared_sharepointonline"
+        }
+      }
+    },
+    "definition": {
+      "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+      "contentVersion": "1.0.0.0",
+      "parameters": {
+        "$authentication": {
+          "defaultValue": {},
+          "type": "SecureObject"
+        },
+        "$connections": {
+          "defaultValue": {},
+          "type": "Object"
+        }
+      },
+      "triggers": {
+        "When_a_file_is_created_(properties_only)": {
+          "recurrence": {
+            "frequency": "Minute",
+            "interval": 1
+          },
+          "evaluatedRecurrence": {
+            "frequency": "Minute",
+            "interval": 1
+          },
+          "splitOn": "@triggerOutputs()?['body/value']",
+          "type": "OpenApiConnection",
+          "inputs": {
+            "parameters": {
+              "dataset": "https://unitaxgroup.sharepoint.com/sites/DemoSDB",
+              "table": "d9aff5e4-02be-4d79-988d-b3636a5be017"
+            },
+            "host": {
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+              "connectionName": "shared_sharepointonline",
+              "operationId": "GetOnNewFileItems"
+            },
+            "authentication": "@parameters('$authentication')"
+          }
+        }
+      },
+      "actions": {
+        "Get_file_content": {
+          "runAfter": {},
+          "type": "OpenApiConnection",
+          "inputs": {
+            "parameters": {
+              "dataset": "https://unitaxgroup.sharepoint.com/sites/DemoSDB",
+              "id": "@triggerBody()?['{Identifier}']",
+              "inferContentType": true
+            },
+            "host": {
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+              "connectionName": "shared_sharepointonline",
+              "operationId": "GetFileContent"
+            },
+            "authentication": "@parameters('$authentication')"
+          }
+        },
+        "Create_item": {
+          "runAfter": {
+            "Get_file_content": [
+              "Succeeded"
+            ]
+          },
+          "type": "OpenApiConnection",
+          "inputs": {
+            "parameters": {
+              "dataset": "https://unitaxgroup.sharepoint.com/sites/DemoSDB",
+              "table": "1634c750-d351-4828-975a-4057c0920b05",
+              "item/Title": "@triggerBody()?['{FilenameWithExtension}']"
+            },
+            "host": {
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+              "connectionName": "shared_sharepointonline",
+              "operationId": "PostItem"
+            },
+            "authentication": "@parameters('$authentication')"
+          }
+        },
+        "Add_attachment": {
+          "runAfter": {
+            "Create_item": [
+              "Succeeded"
+            ]
+          },
+          "type": "OpenApiConnection",
+          "inputs": {
+            "parameters": {
+              "dataset": "https://unitaxgroup.sharepoint.com/sites/DemoSDB",
+              "table": "1634c750-d351-4828-975a-4057c0920b05",
+              "itemId": "@outputs('Create_item')?['body/ID']",
+              "displayName": "@triggerBody()?['{FilenameWithExtension}']",
+              "body": "@body('Get_file_content')"
+            },
+            "host": {
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+              "connectionName": "shared_sharepointonline",
+              "operationId": "CreateAttachment"
+            },
+            "authentication": "@parameters('$authentication')"
+          }
+        }
+      },
+      "outputs": {}
+    },
+    "templateName": null
+  },
+  "schemaVersion": "1.0.0.0"
+}

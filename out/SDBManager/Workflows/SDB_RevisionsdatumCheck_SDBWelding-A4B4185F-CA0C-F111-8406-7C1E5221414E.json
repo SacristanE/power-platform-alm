@@ -1,0 +1,352 @@
+{
+  "properties": {
+    "connectionReferences": {
+      "shared_sharepointonline": {
+        "runtimeSource": "embedded",
+        "connection": {
+          "connectionReferenceLogicalName": "cra40_sharedsharepointonline_33860"
+        },
+        "api": {
+          "name": "shared_sharepointonline"
+        }
+      },
+      "shared_office365": {
+        "runtimeSource": "embedded",
+        "connection": {
+          "connectionReferenceLogicalName": "cra40_sharedoffice365_d4fde"
+        },
+        "api": {
+          "name": "shared_office365"
+        }
+      }
+    },
+    "definition": {
+      "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+      "contentVersion": "undefined",
+      "parameters": {
+        "$authentication": {
+          "defaultValue": {},
+          "type": "SecureObject"
+        },
+        "$connections": {
+          "defaultValue": {},
+          "type": "Object"
+        }
+      },
+      "triggers": {
+        "Recurrence": {
+          "recurrence": {
+            "frequency": "Month",
+            "interval": "1",
+            "startTime": "2025-09-29T12:45:00",
+            "timeZone": "W. Europe Standard Time"
+          },
+          "evaluatedRecurrence": {
+            "frequency": "Month",
+            "interval": "1",
+            "startTime": "2025-09-29T12:45:00",
+            "timeZone": "W. Europe Standard Time"
+          },
+          "type": "Recurrence"
+        }
+      },
+      "actions": {
+        "Initialize_variable": {
+          "runAfter": {},
+          "type": "InitializeVariable",
+          "inputs": {
+            "variables": [
+              {
+                "name": "materials",
+                "type": "array"
+              }
+            ]
+          }
+        },
+        "Get_items": {
+          "runAfter": {
+            "Initialize_variable": [
+              "Succeeded"
+            ]
+          },
+          "type": "OpenApiConnection",
+          "inputs": {
+            "parameters": {
+              "dataset": "https://unitaxgroup.sharepoint.com/sites/DemoSDB",
+              "table": "c7ba1fb2-17dd-4ada-ac8f-da34f6664d4e",
+              "$top": 1000
+            },
+            "host": {
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+              "connectionName": "shared_sharepointonline",
+              "operationId": "GetItems"
+            },
+            "authentication": "@parameters('$authentication')"
+          }
+        },
+        "Apply_to_each": {
+          "foreach": "@outputs('Get_items')?['body/value']",
+          "actions": {
+            "Condition": {
+              "actions": {},
+              "runAfter": {
+                "empty_bestatigs": [
+                  "Succeeded"
+                ]
+              },
+              "else": {
+                "actions": {
+                  "Condition_4": {
+                    "actions": {
+                      "Condition_2": {
+                        "actions": {
+                          "Append_to_array_variable_1": {
+                            "type": "AppendToArrayVariable",
+                            "inputs": {
+                              "name": "materials",
+                              "value": "@{items('Apply_to_each')?['ItemNumber']}: @{items('Apply_to_each')?['field_2']} | Revisionsdatum: @{items('Apply_to_each')?['Revisionsdatum']}"
+                            }
+                          },
+                          "Update_item_1": {
+                            "runAfter": {
+                              "Append_to_array_variable_1": [
+                                "Succeeded"
+                              ]
+                            },
+                            "type": "OpenApiConnection",
+                            "inputs": {
+                              "parameters": {
+                                "dataset": "https://unitaxgroup.sharepoint.com/sites/DemoSDB",
+                                "table": "c7ba1fb2-17dd-4ada-ac8f-da34f6664d4e",
+                                "id": "@items('Apply_to_each')?['ID']",
+                                "item/Aktualit_x00e4_tbest_x00e4_tigt": false
+                              },
+                              "host": {
+                                "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+                                "connectionName": "shared_sharepointonline",
+                                "operationId": "PatchItem"
+                              },
+                              "authentication": "@parameters('$authentication')"
+                            }
+                          }
+                        },
+                        "else": {
+                          "actions": {
+                            "Condition_3": {
+                              "actions": {
+                                "Append_to_array_variable": {
+                                  "type": "AppendToArrayVariable",
+                                  "inputs": {
+                                    "name": "materials",
+                                    "value": "@{items('Apply_to_each')?['ItemNumber']}: @{items('Apply_to_each')?['field_2']} | Revisionsdatum: @{items('Apply_to_each')?['Revisionsdatum']}"
+                                  }
+                                },
+                                "Update_item": {
+                                  "runAfter": {
+                                    "Append_to_array_variable": [
+                                      "Succeeded"
+                                    ]
+                                  },
+                                  "type": "OpenApiConnection",
+                                  "inputs": {
+                                    "parameters": {
+                                      "dataset": "https://unitaxgroup.sharepoint.com/sites/DemoSDB",
+                                      "table": "c7ba1fb2-17dd-4ada-ac8f-da34f6664d4e",
+                                      "id": "@items('Apply_to_each')?['ID']",
+                                      "item/Aktualit_x00e4_tbest_x00e4_tigt": false
+                                    },
+                                    "host": {
+                                      "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+                                      "connectionName": "shared_sharepointonline",
+                                      "operationId": "PatchItem"
+                                    },
+                                    "authentication": "@parameters('$authentication')"
+                                  }
+                                }
+                              },
+                              "else": {
+                                "actions": {}
+                              },
+                              "expression": {
+                                "and": [
+                                  {
+                                    "less": [
+                                      "@ticks(items('Apply_to_each')?['Best_x00e4_tigtam'])",
+                                      "@ticks(addDays(utcNow(), -365))"
+                                    ]
+                                  }
+                                ]
+                              },
+                              "type": "If"
+                            }
+                          }
+                        },
+                        "expression": {
+                          "and": [
+                            {
+                              "equals": [
+                                "@string(empty(items('Apply_to_each')?['Best_x00e4_tigtam']))",
+                                "@string(True)"
+                              ]
+                            }
+                          ]
+                        },
+                        "type": "If"
+                      }
+                    },
+                    "else": {
+                      "actions": {}
+                    },
+                    "expression": {
+                      "and": [
+                        {
+                          "less": [
+                            "@ticks(items('Apply_to_each')?['Revisionsdatum'])",
+                            "@ticks(addDays(utcNow(), -730))"
+                          ]
+                        }
+                      ]
+                    },
+                    "type": "If"
+                  }
+                }
+              },
+              "expression": {
+                "and": [
+                  {
+                    "equals": [
+                      "@string(empty(items('Apply_to_each')?['Revisionsdatum']))",
+                      "@string(True)"
+                    ]
+                  }
+                ]
+              },
+              "type": "If"
+            },
+            "Compose_3": {
+              "type": "Compose",
+              "inputs": "@items('Apply_to_each')?['Revisiondatum']"
+            },
+            "Compose_4": {
+              "runAfter": {
+                "empty_Revisionsdatum": [
+                  "Succeeded"
+                ]
+              },
+              "type": "Compose",
+              "inputs": "@items('Apply_to_each')?['Best_x00e4_tigtam']"
+            },
+            "empty_bestatigs": {
+              "runAfter": {
+                "Compose_4": [
+                  "Succeeded"
+                ]
+              },
+              "type": "Compose",
+              "inputs": "@string(empty(items('Apply_to_each')?['Best_x00e4_tigtam']))"
+            },
+            "empty_Revisionsdatum": {
+              "runAfter": {
+                "Compose_3": [
+                  "Succeeded"
+                ]
+              },
+              "type": "Compose",
+              "inputs": "@string(empty(items('Apply_to_each')?['Revisiondatum']))"
+            }
+          },
+          "runAfter": {
+            "Get_items": [
+              "Succeeded"
+            ]
+          },
+          "type": "Foreach"
+        },
+        "Condition_1": {
+          "actions": {},
+          "runAfter": {
+            "Compose_2": [
+              "Succeeded"
+            ]
+          },
+          "else": {
+            "actions": {
+              "Get_Items_in_Bullet_Points_Format": {
+                "type": "Compose",
+                "inputs": "@concat('- ', join(variables('materials'), '<br>- '))"
+              },
+              "Extract_Customer_Name_from_List": {
+                "runAfter": {
+                  "Get_Items_in_Bullet_Points_Format": [
+                    "Succeeded"
+                  ]
+                },
+                "type": "Select",
+                "inputs": {
+                  "from": "@outputs('Get_items')?['body/value']",
+                  "select": {
+                    "Customer Name": "@item()?['Title']"
+                  }
+                }
+              },
+              "Get_the_first_vale_": {
+                "runAfter": {
+                  "Extract_Customer_Name_from_List": [
+                    "Succeeded"
+                  ]
+                },
+                "type": "Compose",
+                "inputs": "@first(body('Extract_Customer_Name_from_List'))?['Customer Name']"
+              },
+              "Send_an_email_(V2)": {
+                "runAfter": {
+                  "Get_the_first_vale_": [
+                    "Succeeded"
+                  ]
+                },
+                "type": "OpenApiConnection",
+                "inputs": {
+                  "parameters": {
+                    "emailMessage/To": "andre.schumann@welding.eu",
+                    "emailMessage/Subject": "Artikel überprüfen",
+                    "emailMessage/Body": "<p class=\"editor-paragraph\">Sehr geehrtes Personal von Welding,<br>bitte bestätigen Sie uns für folgende Artikel die Aktualität des/ der vorhandenen Sicherheitsdatenblätter, oder stellen Sie uns ein neueres zur Verfügung:<br><br>@{outputs('Get_Items_in_Bullet_Points_Format')}<br><br><br>Sollten Sie Fragen bezüglich dieser E-Mail haben, kontaktieren Sie bitte: phillip.kobs@unitax-group.de<br><br>Mit freundlichen Grüßen | Kind regards<br>Ihr Unitax Team<br><br>______________________________________________________________________________________________________________________________<br><br>Dear Welding Team,<br>for the following materials, please state that the safety data sheets are up to date or send us a new version:<br><br>@{outputs('Get_Items_in_Bullet_Points_Format')}<br><br><br>If you have any questions regarding this email, please contact: phillip.kobs@unitax-group.de<br><br>Mit freundlichen Grüßen | Kind regards<br>Ihr Unitax Team<br><br>********************************automated generated e-mail**********************************<br><br><br>An den Gehren 1 | 12529 Schönefeld | Germany<br>http://www.unitax-berlin.de<br>UNITAX-Pharmalogistik GmbH | Amtsgericht Cottbus HRB 11194 CB<br>Geschäftsführender Gesellschafter: André Michael Reich<br>Geschäftsführer: Grit Schmider, Bernd Schmider</p>",
+                    "emailMessage/From": "cc-unitax@unitax-group.de",
+                    "emailMessage/Importance": "Normal"
+                  },
+                  "host": {
+                    "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                    "connectionName": "shared_office365",
+                    "operationId": "SendEmailV2"
+                  },
+                  "authentication": "@parameters('$authentication')"
+                }
+              }
+            }
+          },
+          "expression": {
+            "and": [
+              {
+                "equals": [
+                  "@length(variables('materials'))",
+                  0
+                ]
+              }
+            ]
+          },
+          "type": "If"
+        },
+        "Compose_2": {
+          "runAfter": {
+            "Apply_to_each": [
+              "Succeeded"
+            ]
+          },
+          "type": "Compose",
+          "inputs": "@variables('materials')"
+        }
+      }
+    },
+    "templateName": null
+  },
+  "schemaVersion": "1.0.0.0"
+}
