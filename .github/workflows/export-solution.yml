@@ -3,6 +3,9 @@ name: Export Solution
 on:
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   export:
     runs-on: ubuntu-latest
@@ -24,6 +27,7 @@ jobs:
           solution-name: SDBManager
           solution-output-file: out/solution.zip
           managed: false
+
       - name: Unpack solution
         uses: microsoft/powerplatform-actions/unpack-solution@v1
         with:
